@@ -15,17 +15,17 @@ int main(int argc, char* argv[]) {
 	setting.gpn_gpio_direction[0] = 1;
 	setting.gpn_gpio_value[0]     = 1;
 
-	setting.gpn_func[1]           = 0;
+	setting.gpn_func[1]           = 1;
 	setting.gpn_gpio_direction[1] = 1;
-	setting.gpn_gpio_value[1]     = 1;
+	setting.gpn_gpio_value[1]     = 0;
 
-	setting.gpn_func[2]           = 0;
+	setting.gpn_func[2]           = 2;
 	setting.gpn_gpio_direction[2] = 1;
 	setting.gpn_gpio_value[2]     = 1;
 
-	setting.gpn_func[3]           = 0;
+	setting.gpn_func[3]           = 3;
 	setting.gpn_gpio_direction[3] = 1;
-	setting.gpn_gpio_value[3]     = 1;
+	setting.gpn_gpio_value[3]     = 0;
 
 	CHECK_EQ(mcp2221_write_sram_setting(&handle, &setting), STATUS_OK);
 
@@ -49,5 +49,7 @@ int main(int argc, char* argv[]) {
 	CHECK_EQ(setting.gpn_gpio_direction[3], read_setting.gpn_gpio_direction[3]);
 
 	CHECK_EQ(mcp2221_destroy(&handle), STATUS_OK);
+
+	printf("test success.\n");
 }
 

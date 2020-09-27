@@ -42,6 +42,17 @@ int mcp2221_lowlevel_send(hid_device *dev, uint8_t *data, int length) {
 		return STATUS_ARGUMENT_ERROR;
 	}
 
+#ifdef ENABLE_DEBUG
+	printf("----- send begin -----\n");
+	for (int i = 0 ; i < length ; i++) {
+		printf("0x%02x ", data[i]);
+		if (i % 16 == 15) {
+			printf("\n");
+		}
+	}
+	printf("----- send end -----\n");
+#endif
+
 	const int send_size = 64 + 1;
 	uint8_t send_data[send_size] = {0};
 	memcpy(send_data + 1, data, length);
@@ -71,6 +82,17 @@ int mcp2221_lowlevel_recv(hid_device *dev, uint8_t *data, int length) {
 	}
 
 	memcpy(data, recv_data, length);
+
+#ifdef ENABLE_DEBUG
+	printf("----- recv begin -----\n");
+	for (int i = 0 ; i < length ; i++) {
+		printf("0x%02x ", data[i]);
+		if (i % 16 == 15) {
+			printf("\n");
+		}
+	}
+	printf("----- recv end -----\n");
+#endif
 
 	return STATUS_OK;
 }
@@ -166,18 +188,18 @@ void mcp2221_command_set_sram_settings(uint8_t cmd[64], SRAMSetting *setting) {
 	cmd[4]  = 0;	// won't be altered
 	cmd[5]  = 0;	// won't be altered
 	cmd[6]  = 0;	// won't be altered
-	cmd[7]  = setting->enable_gpio_config & 0x1;
-	cmd[8]  = (setting->gpn_func[0] & 0x7) | ((setting->gpn_gpio_direction[0] & 0x1) << 3) | ((setting->gpn_gpio_direction[0] & 0x1) << 4);
-	cmd[9]  = (setting->gpn_func[1] & 0x7) | ((setting->gpn_gpio_direction[1] & 0x1) << 3) | ((setting->gpn_gpio_direction[0] & 0x1) << 4);
-	cmd[10] = (setting->gpn_func[2] & 0x7) | ((setting->gpn_gpio_direction[2] & 0x1) << 3) | ((setting->gpn_gpio_direction[0] & 0x1) << 4);
-	cmd[11] = (setting->gpn_func[3] & 0x7) | ((setting->gpn_gpio_direction[3] & 0x1) << 3) | ((setting->gpn_gpio_direction[0] & 0x1) << 4);
+	cmd[7]  = (setting->enable_gpio_config & 0x1) << 7;
+	cmd[8]  = (setting->gpn_func[0] & 0x7) | ((setting->gpn_gpio_direction[0] & 0x1) << 3) | ((setting->gpn_gpio_value[0] & 0x1) << 4);
+	cmd[9]  = (setting->gpn_func[1] & 0x7) | ((setting->gpn_gpio_direction[1] & 0x1) << 3) | ((setting->gpn_gpio_value[1] & 0x1) << 4);
+	cmd[10] = (setting->gpn_func[2] & 0x7) | ((setting->gpn_gpio_direction[2] & 0x1) << 3) | ((setting->gpn_gpio_value[2] & 0x1) << 4);
+	cmd[11] = (setting->gpn_func[3] & 0x7) | ((setting->gpn_gpio_direction[3] & 0x1) << 3) | ((setting->gpn_gpio_value[3] & 0x1) << 4);
 }
 
 // Get SRAM settings
 void mcp2221_command_get_sram_setting(uint8_t cmd[64]) {
 	memset(cmd, 0, 64);
 
-	cmd[0]  = 0x60;
+	cmd[0]  = 0x61;
 }
 
 // ----- high layaer api -----
@@ -259,8 +281,8 @@ int mcp2221_write_sram_setting(MCP2221Handle *handle, SRAMSetting *setting) {
 		return STATUS_IO_ERROR;
 	}
 
-	if (buf[0] != 0) {
-		PRINT_DEBUG("[ERROR] ret = %d\n", buf[0]);
+	if (buf[0] != 0x60 || buf[1] != 0) {
+		PRINT_DEBUG("[ERROR] ret = 0x%x\n", buf[0]);
 		return STATUS_IO_ERROR;
 	}
 
@@ -278,20 +300,25 @@ int mcp2221_read_sram_setting(MCP2221Handle *handle, SRAMSetting *setting) {
 		return STATUS_IO_ERROR;
 	}
 
+	if (buf[0] != 0x61 || buf[1] != 0) {
+		PRINT_DEBUG("[ERROR] ret = 0x%x\n", buf[0]);
+		return STATUS_IO_ERROR;
+	}
+
 	setting->gpn_func[0] = buf[22] & 0x7;
 	setting->gpn_func[1] = buf[23] & 0x7;
 	setting->gpn_func[2] = buf[24] & 0x7;
 	setting->gpn_func[3] = buf[25] & 0x7;
 
-	setting->gpn_gpio_direction[0] = (buf[22] & 0x1) >> 3;
-	setting->gpn_gpio_direction[1] = (buf[23] & 0x1) >> 3;
-	setting->gpn_gpio_direction[2] = (buf[24] & 0x1) >> 3;
-	setting->gpn_gpio_direction[3] = (buf[25] & 0x1) >> 3;
+	setting->gpn_gpio_direction[0] = (buf[22] >> 3) & 0x1;
+	setting->gpn_gpio_direction[1] = (buf[23] >> 3) & 0x1;
+	setting->gpn_gpio_direction[2] = (buf[24] >> 3) & 0x1;
+	setting->gpn_gpio_direction[3] = (buf[25] >> 3) & 0x1;
 
-	setting->gpn_gpio_value[0] = (buf[22] & 0x1) >> 4;
-	setting->gpn_gpio_value[1] = (buf[23] & 0x1) >> 4;
-	setting->gpn_gpio_value[2] = (buf[24] & 0x1) >> 4;
-	setting->gpn_gpio_value[3] = (buf[25] & 0x1) >> 4;
+	setting->gpn_gpio_value[0] = (buf[22] >> 4) & 0x1;
+	setting->gpn_gpio_value[1] = (buf[23] >> 4) & 0x1;
+	setting->gpn_gpio_value[2] = (buf[24] >> 4) & 0x1;
+	setting->gpn_gpio_value[3] = (buf[25] >> 4) & 0x1;
 
 	return STATUS_OK;
 }
