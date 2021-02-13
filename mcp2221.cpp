@@ -323,7 +323,7 @@ int mcp2221_read_sram_setting(MCP2221Handle *handle, SRAMSetting *setting) {
 	return STATUS_OK;
 }
 
-int mcp2221_set_gpio_direction(MCP2221Handle *handle, int port, GPIODirection direction) {
+int mcp2221_set_gpio_direction(MCP2221Handle *handle, int port, GPIODirection dir) {
 	int ret;
 	uint8_t cmd[64];
 	uint8_t buf[64];
@@ -332,7 +332,7 @@ int mcp2221_set_gpio_direction(MCP2221Handle *handle, int port, GPIODirection di
 	gpio.enable_value     = 0;
 	gpio.value            = GPIO_VALUE_L;
 	gpio.enable_direction = 1;
-	gpio.direction        = direction;
+	gpio.direction        = dir;
 
 	if (mcp2221_validate_gpio_setting(&gpio) != STATUS_OK) {
 		return STATUS_ARGUMENT_ERROR;
@@ -380,6 +380,34 @@ int mcp2221_set_gpio_direction(MCP2221Handle *handle, int port, GPIODirection di
 				return STATUS_IO_ERROR;
 			}
 		}
+	}
+
+	return STATUS_OK;
+}
+
+int mcp2221_get_gpio_direction(MCP2221Handle *handle, int port, GPIODirection *dir) {
+	int ret;
+	uint8_t cmd[64];
+	uint8_t buf[64];
+
+	if (port < 0 || 4 <= port) {
+		return STATUS_ARGUMENT_ERROR;
+	}
+
+	mcp2221_command_get_gpio_input(cmd);
+
+	if (mcp2221_issue_command(handle, cmd, buf) != STATUS_OK) {
+		return STATUS_IO_ERROR;
+	}
+
+	if (buf[0] != 0x51 || buf[1] != 0) {
+		PRINT_DEBUG("[ERROR] ret = 0x%x\n", buf[0]);
+		return STATUS_IO_ERROR;
+	}
+
+	*dir = (GPIODirection)buf[3 + 2*port];
+	if (*dir == 0xEF) {
+		*dir = GPIO_DIR_MAX;
 	}
 
 	return STATUS_OK;
@@ -447,10 +475,14 @@ int mcp2221_set_gpio_value(MCP2221Handle *handle, int port, GPIOValue value) {
 	return STATUS_OK;
 }
 
-int mcp2221_get_gpio_value(MCP2221Handle *handle, GPIOValue *gp0, GPIOValue *gp1, GPIOValue *gp2, GPIOValue *gp3) {
+int mcp2221_get_gpio_value(MCP2221Handle *handle, int port, GPIOValue *value) {
 	int ret;
 	uint8_t cmd[64];
 	uint8_t buf[64];
+
+	if (port < 0 || 4 <= port) {
+		return STATUS_ARGUMENT_ERROR;
+	}
 
 	mcp2221_command_get_gpio_input(cmd);
 
@@ -458,14 +490,15 @@ int mcp2221_get_gpio_value(MCP2221Handle *handle, GPIOValue *gp0, GPIOValue *gp1
 		return STATUS_IO_ERROR;
 	}
 
-	if (buf[0] != 0x51) {
+	if (buf[0] != 0x51 || buf[1] != 0) {
+		PRINT_DEBUG("[ERROR] ret = 0x%x\n", buf[0]);
 		return STATUS_IO_ERROR;
 	}
 
-	*gp0 = (GPIOValue)buf[3];
-	*gp1 = (GPIOValue)buf[5];
-	*gp2 = (GPIOValue)buf[7];
-	*gp3 = (GPIOValue)buf[9];
+	*value = (GPIOValue)buf[2 + port * 2];
+	if (*value == 0xEE) {
+		*value = GPIO_VALUE_MAX;
+	}
 
 	return STATUS_OK;
 }

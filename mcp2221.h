@@ -101,9 +101,10 @@ typedef struct _MCP2221Handle {
 
 int mcp2221_write_sram_setting(MCP2221Handle *handle, SRAMSetting *setting);
 int mcp2221_read_sram_setting(MCP2221Handle *handle, SRAMSetting *setting);
-int mcp2221_set_gpio_direction(MCP2221Handle *handle, int port, GPIODirection direction);
+int mcp2221_set_gpio_direction(MCP2221Handle *handle, int port, GPIODirection dir);
+int mcp2221_get_gpio_direction(MCP2221Handle *handle, int port , GPIODirection *dir);
 int mcp2221_set_gpio_value(MCP2221Handle *handle, int port, GPIOValue value);
-int mcp2221_get_gpio_value(MCP2221Handle *handle, GPIOValue *gp0, GPIOValue *gp1, GPIOValue *gp2, GPIOValue *gp3);
+int mcp2221_get_gpio_value(MCP2221Handle *handle, int port, GPIOValue *value);
 int mcp2221_init(MCP2221Handle *handle);
 int mcp2221_destroy(MCP2221Handle *handle);
 
